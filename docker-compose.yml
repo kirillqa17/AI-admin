@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # Redis - для сессий и кеша
+  redis:
+    image: redis:7-alpine
+    container_name: ai-admin-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - ai-admin-network
+
+  # PostgreSQL - для логов и данных
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-admin-postgres
+    environment:
+      POSTGRES_DB: ai_admin
+      POSTGRES_USER: ai_admin
+      POSTGRES_PASSWORD: ai_admin_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_admin"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - ai-admin-network
+
+  # AI Agent - ядро системы
+  ai-agent:
+    build:
+      context: ./ai-agent
+      dockerfile: Dockerfile
+    container_name: ai-admin-agent
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ai_admin
+      - POSTGRES_USER=ai_admin
+      - POSTGRES_PASSWORD=ai_admin_password
+      - CRM_TYPE=${CRM_TYPE:-bitrix24}
+      - CRM_API_KEY=${CRM_API_KEY}
+      - CRM_BASE_URL=${CRM_BASE_URL}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - ai-admin-network
+    restart: unless-stopped
+
+  # API Gateway - центральная точка входа
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: ai-admin-api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ai_admin
+      - POSTGRES_USER=ai_admin
+      - POSTGRES_PASSWORD=ai_admin_password
+      - CRM_TYPE=${CRM_TYPE:-bitrix24}
+      - CRM_API_KEY=${CRM_API_KEY}
+      - CRM_BASE_URL=${CRM_BASE_URL}
+      - AI_AGENT_URL=http://ai-agent:8001
+    depends_on:
+      - redis
+      - postgres
+      - ai-agent
+    networks:
+      - ai-admin-network
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  ai-admin-network:
+    driver: bridge

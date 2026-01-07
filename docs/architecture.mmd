@@ -1,0 +1,130 @@
+graph TD
+    %% ============================================
+    %% EXTERNAL WORLD - Внешние интерфейсы
+    %% ============================================
+    subgraph EXT["External World (Clients/Channels)"]
+        USER[("User<br/>Клиент")]
+        TG_API["Telegram API<br/>(Webhooks)"]
+        WA_API["WhatsApp<br/>Business API"]
+        VOIP["Telephony Provider<br/>(VoIP/SIP Trunk)"]
+    end
+
+    %% ============================================
+    %% INGESTION LAYER - Слой приема данных
+    %% ============================================
+    subgraph INGESTION["Ingestion Layer (Gateway)"]
+        API_GW["API Gateway<br/>(FastAPI)<br/>Webhook Receiver"]
+        STT["STT Module<br/>(Speech-to-Text)<br/>Google/Whisper"]
+        TTS["TTS Module<br/>(Text-to-Speech)<br/>Google/ElevenLabs"]
+    end
+
+    %% ============================================
+    %% CORE LOGIC - Ядро агента
+    %% ============================================
+    subgraph CORE["Core Logic (Python Agent)"]
+        ORCH["Orchestrator<br/>Главный контроллер<br/>диалога"]
+        PROMPT_MGR["Prompt Manager<br/>Управление<br/>системными промптами"]
+        TOOL_MGR["Tool/Function<br/>Calling Manager<br/>Роутинг действий"]
+    end
+
+    %% ============================================
+    %% AI LAYER - Слой интеллекта
+    %% ============================================
+    subgraph AI["AI Layer"]
+        GEMINI["Google Gemini API<br/>(LLM)<br/>Генерация ответов"]
+    end
+
+    %% ============================================
+    %% DATA LAYER - Слой данных
+    %% ============================================
+    subgraph DATA["Data & State Layer"]
+        REDIS[("Redis<br/>Session State Storage<br/>Контекст диалога")]
+        POSTGRES[("PostgreSQL<br/>Логи, пользователи,<br/>аналитика")]
+    end
+
+    %% ============================================
+    %% INTEGRATIONS - Внешние интеграции
+    %% ============================================
+    subgraph INTEGRATIONS["External Integrations"]
+        CRM["CRM System<br/>(REST API)<br/>Слоты, записи, клиенты"]
+    end
+
+    %% ============================================
+    %% CONNECTIONS - Связи
+    %% ============================================
+
+    %% User -> Channels
+    USER -->|"Пишет сообщение"| TG_API
+    USER -->|"Пишет сообщение"| WA_API
+    USER -->|"Звонит"| VOIP
+
+    %% Channels -> API Gateway
+    TG_API -->|"Webhook event (JSON)"| API_GW
+    WA_API -->|"Webhook event (JSON)"| API_GW
+    VOIP -->|"Входящий аудиопоток (RTP/WebSocket)"| API_GW
+
+    %% API Gateway -> STT (для голоса)
+    API_GW -->|"Аудио данные"| STT
+    STT -->|"Транскрибированный текст"| ORCH
+
+    %% API Gateway -> Orchestrator (для текста)
+    API_GW -->|"Текст сообщения"| ORCH
+
+    %% Orchestrator <-> Session State
+    ORCH <-->|"Загрузка/сохранение контекста"| REDIS
+
+    %% Orchestrator -> Prompt Manager
+    ORCH -->|"Запрос промпта"| PROMPT_MGR
+    PROMPT_MGR -->|"System prompt"| ORCH
+
+    %% Orchestrator -> AI Layer
+    ORCH -->|"Запрос к LLM (prompt + context)"| GEMINI
+    GEMINI -->|"Ответ LLM (text/function_call)"| ORCH
+
+    %% Orchestrator -> Tool Manager
+    ORCH -->|"Function call от LLM"| TOOL_MGR
+    TOOL_MGR -->|"Результат выполнения"| ORCH
+
+    %% Tool Manager -> CRM
+    TOOL_MGR -->|"REST API запрос"| CRM
+    CRM -->|"JSON ответ"| TOOL_MGR
+
+    %% Tool Manager -> Database
+    TOOL_MGR -->|"Запись логов"| POSTGRES
+
+    %% Orchestrator -> TTS (для голоса)
+    ORCH -->|"Текст ответа"| TTS
+    TTS -->|"Аудио ответ"| API_GW
+
+    %% Orchestrator -> API Gateway (для текста)
+    ORCH -->|"Текст ответа"| API_GW
+
+    %% API Gateway -> Channels (ответы)
+    API_GW -->|"Отправка сообщения"| TG_API
+    API_GW -->|"Отправка сообщения"| WA_API
+    API_GW -->|"Исходящий аудиопоток"| VOIP
+
+    %% Channels -> User
+    TG_API -->|"Ответ агента"| USER
+    WA_API -->|"Ответ агента"| USER
+    VOIP -->|"Голосовой ответ"| USER
+
+    %% Analytics logging
+    ORCH -->|"Логирование сессий"| POSTGRES
+
+    %% ============================================
+    %% STYLING
+    %% ============================================
+    classDef external fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef gateway fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef core fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef ai fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    classDef data fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef integration fill:#fffde7,stroke:#f9a825,stroke-width:2px
+
+    class USER,TG_API,WA_API,VOIP external
+    class API_GW,STT,TTS gateway
+    class ORCH,PROMPT_MGR,TOOL_MGR core
+    class GEMINI ai
+    class REDIS,POSTGRES data
+    class CRM integration
