@@ -2,7 +2,7 @@
 Session models для управления состоянием диалогов
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
@@ -26,7 +26,10 @@ class Session(BaseModel):
     id: str = Field(..., description="Уникальный ID сессии")
     user_id: str = Field(..., description="ID пользователя")
     channel: str = Field(..., description="Канал коммуникации")
-    
+
+    # Multi-tenant
+    company_id: Optional[str] = Field(None, description="ID компании (для multi-tenant)")
+
     # Состояние
     state: SessionState = Field(default=SessionState.INITIATED)
     
@@ -44,9 +47,9 @@ class Session(BaseModel):
     crm_appointment_id: Optional[str] = Field(None, description="ID записи в CRM")
     
     # Метаданные
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    last_activity_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_activity_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # TTL для Redis (в секундах) - например, 24 часа
     ttl: int = Field(default=86400, description="Time to live в секундах")

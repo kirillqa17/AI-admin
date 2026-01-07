@@ -22,24 +22,24 @@
 
 **Реализованные компоненты:**
 
-- ✅ **Config Management** (`ai-agent/src/config.py`)
+- ✅ **Config Management** (`ai_agent/src/config.py`)
   - Pydantic Settings для валидации
   - Поддержка .env файлов
   - Конфигурация для всех сервисов
 
-- ✅ **Gemini Service** (`ai-agent/src/services/gemini_service.py`)
+- ✅ **Gemini Service** (`ai_agent/src/services/gemini_service.py`)
   - Интеграция с новым google-genai SDK
   - Поддержка function calling
   - Управление контекстом диалога
   - Async API
 
-- ✅ **Prompt Manager** (`ai-agent/src/services/prompt_manager.py`)
+- ✅ **Prompt Manager** (`ai_agent/src/services/prompt_manager.py`)
   - Системные промпты для разных состояний диалога
   - Контекст компании
   - Контекст сессии
   - 6 состояний: GREETING, COLLECTING_INFO, CONSULTING, BOOKING, CONFIRMING, COMPLETED
 
-- ✅ **Tool Manager** (`ai-agent/src/services/tool_manager.py`)
+- ✅ **Tool Manager** (`ai_agent/src/services/tool_manager.py`)
   - Function calling интерфейс для Gemini
   - 9 функций для работы с CRM:
     - get_services, get_available_slots
@@ -48,12 +48,12 @@
     - и др.
   - Интеграция с CRM адаптерами
 
-- ✅ **Redis Storage** (`ai-agent/src/storage/redis_storage.py`)
+- ✅ **Redis Storage** (`ai_agent/src/storage/redis_storage.py`)
   - Async Redis для сессий
   - TTL управление
   - Health checks
 
-- ✅ **Orchestrator** (`ai-agent/src/core/orchestrator.py`)
+- ✅ **Orchestrator** (`ai_agent/src/core/orchestrator.py`)
   - Главный контроллер диалога
   - Управление состояниями
   - Обработка function calls
@@ -63,7 +63,7 @@
 
 **Реализованные компоненты:**
 
-- ✅ **FastAPI Application** (`api-gateway/src/main.py`)
+- ✅ **FastAPI Application** (`api_gateway/src/main.py`)
   - CORS middleware
   - Structured logging
   - Health checks
@@ -74,7 +74,7 @@
   - `/api/v1/telegram/webhook` - Telegram webhook
   - `/api/v1/whatsapp/webhook` - WhatsApp webhook (с GET верификацией)
 
-- ✅ **Models** (`api-gateway/src/models/requests.py`)
+- ✅ **Models** (`api_gateway/src/models/requests.py`)
   - MessageRequest/MessageResponse
   - HealthResponse
   - Pydantic валидация
@@ -102,8 +102,8 @@
   - Networks и volumes
 
 - ✅ **Dockerfiles**
-  - `ai-agent/Dockerfile`
-  - `api-gateway/Dockerfile`
+  - `ai_agent/Dockerfile`
+  - `api_gateway/Dockerfile`
 
 - ✅ **Documentation**
   - `CLAUDE.md` - руководство для разработчиков

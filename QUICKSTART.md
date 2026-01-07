@@ -106,8 +106,8 @@ venv\Scripts\activate  # Windows
 
 # Установить зависимости
 pip install -r requirements.txt
-pip install -r ai-agent/requirements.txt
-pip install -r api-gateway/requirements.txt
+pip install -r ai_agent/requirements.txt
+pip install -r api_gateway/requirements.txt
 ```
 
 #### 2. Запуск Redis и PostgreSQL
@@ -119,7 +119,7 @@ docker-compose up redis postgres
 #### 3. Запуск AI Agent
 
 ```bash
-cd ai-agent
+cd ai_agent
 cp .env.example .env
 # Отредактируйте .env
 
@@ -129,7 +129,7 @@ python -m src.main
 #### 4. Запуск API Gateway (в новом терминале)
 
 ```bash
-cd api-gateway
+cd api_gateway
 cp .env.example .env
 # Отредактируйте .env
 
@@ -141,7 +141,7 @@ uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 1. **Настройка CRM интеграции**: См. `docs/CRM_INTEGRATION.md`
 2. **Настройка Telegram бота**: См. `telegram-bot/README.md`
 3. **Настройка WhatsApp**: См. `whatsapp-handler/README.md`
-4. **Кастомизация промптов**: См. `ai-agent/src/prompts/system_prompts.py`
+4. **Кастомизация промптов**: См. `ai_agent/src/prompts/system_prompts.py`
 
 ## Поддержка
 

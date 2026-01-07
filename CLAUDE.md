@@ -9,12 +9,111 @@ AI-Admin — это ИИ-агент на Python для **полной замен
 **Целевой рынок**: Российская Федерация
 **Цель проекта**: Вывод продукта на рынок с максимально легкой интеграцией в популярные CRM-системы, используемые в РФ
 
+**Бизнес-модель**: SAAS (Software as a Service) / Multi-tenant
+
 ### Основные функции
 - Прием входящих звонков
 - Общение в Telegram и WhatsApp
 - Консультация клиентов
 - Запись клиентов на услуги
 - Работа с CRM (создание записей, проверка слотов, управление клиентской базой)
+
+## ВАЖНО: Multi-tenant архитектура
+
+**Это SAAS продукт для множества компаний, НЕ single-tenant приложение!**
+
+### Как это работает:
+
+1. **Клиент (компания)** регистрируется на сайте AI-Admin
+2. В **админ-панели на сайте** клиент:
+   - Выбирает свою CRM (YCLIENTS, DIKIDI, Битрикс24, 1C)
+   - Указывает API ключ и другие параметры подключения к своей CRM
+   - Настраивает параметры агента (название компании, часы работы, промпты)
+   - Подключает каналы (Telegram бот, WhatsApp, телефония)
+3. **Все настройки хранятся в PostgreSQL** привязанные к `company_id`
+4. **AI Agent динамически загружает** конфигурацию CRM для каждой компании из БД
+
+### Структура данных в БД:
+
+```sql
+companies (
+  id,
+  name,
+  created_at,
+  subscription_plan
+)
+
+company_crm_settings (
+  id,
+  company_id,
+  crm_type,        -- 'yclients', 'dikidi', 'bitrix24', '1c'
+  api_key,         -- зашифрован!
+  base_url,
+  additional_settings  -- JSON для CRM-специфичных настроек
+)
+
+company_agent_settings (
+  id,
+  company_id,
+  company_description,
+  working_hours,
+  custom_prompts     -- JSON с кастомными промптами
+)
+
+company_channels (
+  id,
+  company_id,
+  channel_type,      -- 'telegram', 'whatsapp', 'voice'
+  is_active,
+  config             -- JSON с настройками канала
+)
+```
+
+### Переменные окружения (CRM_TYPE, CRM_API_KEY):
+
+**Это только для разработки и тестирования!**
+
+В production:
+- ❌ НЕТ глобальных переменных окружения для CRM
+- ✅ Каждая компания имеет свои настройки в БД
+- ✅ AI Agent получает `company_id` из входящего сообщения
+- ✅ AI Agent загружает CRM настройки из БД по `company_id`
+- ✅ Создается CRM адаптер динамически для конкретной компании
+
+### Изменения в архитектуре:
+
+**Orchestrator должен:**
+```python
+async def handle_message(self, message: Message) -> Dict:
+    # 1. Извлечь company_id из сообщения
+    company_id = message.metadata.get("company_id")
+
+    # 2. Загрузить настройки компании из БД
+    company_settings = await self.db.get_company_settings(company_id)
+
+    # 3. Создать CRM адаптер для этой компании
+    crm_adapter = CRMFactory.create(
+        crm_type=company_settings.crm_type,
+        api_key=company_settings.crm_api_key,
+        base_url=company_settings.crm_base_url
+    )
+
+    # 4. Обработать сообщение с CRM этой компании
+    ...
+```
+
+**API Gateway должен:**
+- Определять `company_id` из webhook URL или токена
+- Добавлять `company_id` в метаданные сообщения
+- Пример: `/api/v1/telegram/webhook/{company_id}` или через API token
+
+### Популярные CRM:
+
+Согласно исследованию рынка 2026:
+- **YCLIENTS** - скорее всего самый популярный выбор клиентов
+- DIKIDI - второй по популярности
+- Битрикс24 - для малого/среднего бизнеса
+- 1C - корпоративный сегмент
 
 ## Development Approach
 

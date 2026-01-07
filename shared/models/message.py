@@ -2,7 +2,7 @@
 Message models для межсервисного общения
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
@@ -44,8 +44,11 @@ class Message(BaseModel):
     # Метаданные
     from_user_id: str = Field(..., description="ID пользователя отправителя")
     from_user_name: Optional[str] = Field(None, description="Имя пользователя")
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    # Multi-tenant
+    company_id: Optional[str] = Field(None, description="ID компании (для multi-tenant)")
+
     # Дополнительные данные (channel-specific)
     metadata: Dict[str, Any] = Field(default_factory=dict)
     

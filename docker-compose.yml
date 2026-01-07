@@ -29,6 +29,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ai_admin"]
       interval: 10s
@@ -38,9 +39,9 @@ services:
       - ai-admin-network
 
   # AI Agent - ядро системы
-  ai-agent:
+  ai_agent:
     build:
-      context: ./ai-agent
+      context: ./ai_agent
       dockerfile: Dockerfile
     container_name: ai-admin-agent
     environment:
@@ -52,9 +53,10 @@ services:
       - POSTGRES_DB=ai_admin
       - POSTGRES_USER=ai_admin
       - POSTGRES_PASSWORD=ai_admin_password
-      - CRM_TYPE=${CRM_TYPE:-bitrix24}
-      - CRM_API_KEY=${CRM_API_KEY}
-      - CRM_BASE_URL=${CRM_BASE_URL}
+      # MULTI-TENANT: CRM настройки теперь в БД, но можно оставить для dev
+      - CRM_TYPE=${CRM_TYPE:-}
+      - CRM_API_KEY=${CRM_API_KEY:-}
+      - CRM_BASE_URL=${CRM_BASE_URL:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -65,9 +67,9 @@ services:
     restart: unless-stopped
 
   # API Gateway - центральная точка входа
-  api-gateway:
+  api_gateway:
     build:
-      context: ./api-gateway
+      context: ./api_gateway
       dockerfile: Dockerfile
     container_name: ai-admin-api-gateway
     ports:
@@ -83,14 +85,19 @@ services:
       - POSTGRES_DB=ai_admin
       - POSTGRES_USER=ai_admin
       - POSTGRES_PASSWORD=ai_admin_password
-      - CRM_TYPE=${CRM_TYPE:-bitrix24}
-      - CRM_API_KEY=${CRM_API_KEY}
-      - CRM_BASE_URL=${CRM_BASE_URL}
-      - AI_AGENT_URL=http://ai-agent:8001
+      # MULTI-TENANT: CRM настройки теперь в БД, но можно оставить для dev
+      - CRM_TYPE=${CRM_TYPE:-}
+      - CRM_API_KEY=${CRM_API_KEY:-}
+      - CRM_BASE_URL=${CRM_BASE_URL:-}
+      - AI_AGENT_URL=http://ai_agent:8001
+      # Security
+      - API_KEY_SECRET=${API_KEY_SECRET:-change_me_in_production}
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-change_me_in_production}
     depends_on:
-      - redis
-      - postgres
-      - ai-agent
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     networks:
       - ai-admin-network
     restart: unless-stopped

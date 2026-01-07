@@ -1,0 +1,32 @@
+# Shared packages (must be first!)
+-e ../shared
+-e ../crm_integrations
+
+# Core AI Dependencies
+google-genai>=1.0.0  # NEW SDK! Старый google-generativeai deprecated с 30.11.2025
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Async Support
+aiohttp>=3.9.0
+asyncio-mqtt>=0.16.0
+
+# Redis для сессий
+redis>=5.0.0
+aioredis>=2.0.0
+
+# PostgreSQL
+asyncpg>=0.29.0
+sqlalchemy[asyncio]>=2.0.0
+
+# Logging
+structlog>=24.1.0
+python-json-logger>=2.0.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
