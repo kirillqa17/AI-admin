@@ -163,7 +163,8 @@ CREATE TABLE sessions (
 
 CREATE INDEX idx_sessions_company ON sessions(company_id);
 CREATE INDEX idx_sessions_user ON sessions(company_id, user_id, channel);
-CREATE INDEX idx_sessions_active ON sessions(last_activity_at) WHERE expires_at > NOW();
+CREATE INDEX idx_sessions_last_activity ON sessions(last_activity_at);
+CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 
 -- Messages (история сообщений)
 CREATE TABLE messages (

@@ -11,6 +11,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "pydantic>=2.5.0",
+        "pydantic[email]>=2.5.0",  # Добавлено для EmailStr
         "sqlalchemy[asyncio]>=2.0.0",
         "asyncpg>=0.29.0",
         "structlog>=24.1.0",

@@ -98,10 +98,17 @@ async def telegram_webhook(webhook_token: str, request: Request):
                 logger.info(
                     "ai_agent_response_received",
                     message_id=message.id,
-                    has_function_call=result.get("function_called", False)
+                    has_function_call=result.get("function_called", False),
+                    response_text=result.get("text", "")[:100] if result.get("text") else None
                 )
 
-                # TODO: Отправить ответ пользователю в Telegram
+                # Возвращаем ответ от AI агента (для Telegram bot)
+                return {
+                    "ok": True,
+                    "response": result.get("text") or "Обрабатываю ваш запрос...",
+                    "function_called": result.get("function_called", False),
+                    "message_id": message.id
+                }
 
             except httpx.HTTPError as e:
                 logger.error(
@@ -109,9 +116,12 @@ async def telegram_webhook(webhook_token: str, request: Request):
                     message_id=message.id,
                     error=str(e)
                 )
-                # Не падаем, просто логируем ошибку
-
-            return {"ok": True}
+                # Возвращаем ошибку
+                return {
+                    "ok": False,
+                    "response": "Извините, произошла ошибка при обработке сообщения.",
+                    "error": str(e)
+                }
 
     except HTTPException:
         raise

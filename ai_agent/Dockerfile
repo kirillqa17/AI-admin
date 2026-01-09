@@ -2,18 +2,19 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Установка зависимостей
-COPY requirements.txt .
+# Копирование shared models и CRM integrations (из корня проекта)
+COPY shared /app/shared
+COPY crm_integrations /app/crm_integrations
+
+# Установка shared packages как editable
+RUN pip install --no-cache-dir -e /app/shared -e /app/crm_integrations
+
+# Копирование requirements и установка остальных зависимостей
+COPY ai_agent/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копирование shared models
-COPY ../shared /app/shared
-
-# Копирование CRM integrations
-COPY ../crm_integrations /app/crm_integrations
-
 # Копирование кода агента
-COPY src /app/src
+COPY ai_agent/src /app/src
 
 # Запуск
 CMD ["python", "-m", "src.main"]

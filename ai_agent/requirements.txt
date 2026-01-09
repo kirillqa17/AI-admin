@@ -1,6 +1,6 @@
-# Shared packages (must be first!)
--e ../shared
--e ../crm_integrations
+# Shared packages (устанавливаются в Dockerfile отдельно)
+# -e ../shared
+# -e ../crm_integrations
 
 # Core AI Dependencies
 google-genai>=1.0.0  # NEW SDK! Старый google-generativeai deprecated с 30.11.2025

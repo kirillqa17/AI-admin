@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Redis - для сессий и кеша
   redis:
@@ -41,8 +39,8 @@ services:
   # AI Agent - ядро системы
   ai_agent:
     build:
-      context: ./ai_agent
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ai_agent/Dockerfile
     container_name: ai-admin-agent
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
@@ -69,8 +67,8 @@ services:
   # API Gateway - центральная точка входа
   api_gateway:
     build:
-      context: ./api_gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: api_gateway/Dockerfile
     container_name: ai-admin-api-gateway
     ports:
       - "8000:8000"
@@ -98,6 +96,27 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    networks:
+      - ai-admin-network
+    restart: unless-stopped
+
+  # Telegram Bot - для приема сообщений от пользователей
+  telegram_bot:
+    build:
+      context: .
+      dockerfile: telegram_bot/Dockerfile
+    container_name: ai-admin-telegram-bot
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - WEBHOOK_TOKEN=${WEBHOOK_TOKEN}
+      - API_GATEWAY_URL=http://api_gateway:8000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      - api_gateway
+      - redis
     networks:
       - ai-admin-network
     restart: unless-stopped

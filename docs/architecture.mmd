@@ -13,7 +13,7 @@ graph TD
     %% INGESTION LAYER - Слой приема данных
     %% ============================================
     subgraph INGESTION["Ingestion Layer (Gateway)"]
-        API_GW["API Gateway<br/>(FastAPI)<br/>Webhook Receiver"]
+        API_GW["API Gateway<br/>(FastAPI)<br/>Multi-tenant<br/>Webhook Receiver"]
         STT["STT Module<br/>(Speech-to-Text)<br/>Google/Whisper"]
         TTS["TTS Module<br/>(Text-to-Speech)<br/>Google/ElevenLabs"]
     end
@@ -22,31 +22,35 @@ graph TD
     %% CORE LOGIC - Ядро агента
     %% ============================================
     subgraph CORE["Core Logic (Python Agent)"]
-        ORCH["Orchestrator<br/>Главный контроллер<br/>диалога"]
+        ORCH["Orchestrator<br/>Главный контроллер<br/>диалога<br/>(Multi-tenant)"]
         PROMPT_MGR["Prompt Manager<br/>Управление<br/>системными промптами"]
         TOOL_MGR["Tool/Function<br/>Calling Manager<br/>Роутинг действий"]
+        CRM_FACTORY["CRM Factory<br/>Динамическое создание<br/>CRM адаптеров"]
     end
 
     %% ============================================
     %% AI LAYER - Слой интеллекта
     %% ============================================
     subgraph AI["AI Layer"]
-        GEMINI["Google Gemini API<br/>(LLM)<br/>Генерация ответов"]
+        GEMINI["Google Gemini API<br/>(LLM)<br/>Генерация ответов<br/>Function Calling"]
     end
 
     %% ============================================
     %% DATA LAYER - Слой данных
     %% ============================================
-    subgraph DATA["Data & State Layer"]
+    subgraph DATA["Data & State Layer (Multi-tenant)"]
         REDIS[("Redis<br/>Session State Storage<br/>Контекст диалога")]
-        POSTGRES[("PostgreSQL<br/>Логи, пользователи,<br/>аналитика")]
+        POSTGRES[("PostgreSQL<br/>Companies (Multi-tenant)<br/>CRM Settings<br/>Agent Settings<br/>Channels<br/>Логи, аналитика")]
     end
 
     %% ============================================
     %% INTEGRATIONS - Внешние интеграции
     %% ============================================
-    subgraph INTEGRATIONS["External Integrations"]
-        CRM["CRM System<br/>(REST API)<br/>Слоты, записи, клиенты"]
+    subgraph INTEGRATIONS["External Integrations (Per Company)"]
+        CRM1["YCLIENTS<br/>(Company A)"]
+        CRM2["Битрикс24<br/>(Company B)"]
+        CRM3["DIKIDI<br/>(Company C)"]
+        CRM4["1C<br/>(Company D)"]
     end
 
     %% ============================================
@@ -59,35 +63,53 @@ graph TD
     USER -->|"Звонит"| VOIP
 
     %% Channels -> API Gateway
-    TG_API -->|"Webhook event (JSON)"| API_GW
-    WA_API -->|"Webhook event (JSON)"| API_GW
-    VOIP -->|"Входящий аудиопоток (RTP/WebSocket)"| API_GW
+    TG_API -->|"Webhook event<br/>(с webhook_token)"| API_GW
+    WA_API -->|"Webhook event<br/>(с webhook_token)"| API_GW
+    VOIP -->|"Входящий аудиопоток"| API_GW
+
+    %% API Gateway -> PostgreSQL (определение company_id)
+    API_GW -->|"Поиск company_id<br/>по webhook_token"| POSTGRES
+    POSTGRES -->|"company_id,<br/>channel config"| API_GW
 
     %% API Gateway -> STT (для голоса)
     API_GW -->|"Аудио данные"| STT
     STT -->|"Транскрибированный текст"| ORCH
 
     %% API Gateway -> Orchestrator (для текста)
-    API_GW -->|"Текст сообщения"| ORCH
+    API_GW -->|"Message<br/>(с company_id)"| ORCH
+
+    %% Orchestrator -> PostgreSQL (загрузка настроек компании)
+    ORCH -->|"Загрузка CRM settings<br/>и company context"| POSTGRES
+    POSTGRES -->|"CRM config,<br/>business info,<br/>services catalog"| ORCH
+
+    %% Orchestrator -> CRM Factory
+    ORCH -->|"Создать CRM адаптер<br/>для company"| CRM_FACTORY
+    CRM_FACTORY -->|"CRM адаптер<br/>(YCLIENTS/Bitrix24/etc)"| ORCH
 
     %% Orchestrator <-> Session State
-    ORCH <-->|"Загрузка/сохранение контекста"| REDIS
+    ORCH <-->|"Загрузка/сохранение<br/>контекста диалога"| REDIS
 
     %% Orchestrator -> Prompt Manager
-    ORCH -->|"Запрос промпта"| PROMPT_MGR
-    PROMPT_MGR -->|"System prompt"| ORCH
+    ORCH -->|"Запрос промпта<br/>(с company context)"| PROMPT_MGR
+    PROMPT_MGR -->|"System prompt<br/>(персонализированный)"| ORCH
 
     %% Orchestrator -> AI Layer
-    ORCH -->|"Запрос к LLM (prompt + context)"| GEMINI
-    GEMINI -->|"Ответ LLM (text/function_call)"| ORCH
+    ORCH -->|"Запрос к LLM<br/>(prompt + context)"| GEMINI
+    GEMINI -->|"Ответ LLM<br/>(text/function_call)"| ORCH
 
     %% Orchestrator -> Tool Manager
     ORCH -->|"Function call от LLM"| TOOL_MGR
     TOOL_MGR -->|"Результат выполнения"| ORCH
 
-    %% Tool Manager -> CRM
-    TOOL_MGR -->|"REST API запрос"| CRM
-    CRM -->|"JSON ответ"| TOOL_MGR
+    %% Tool Manager -> CRM (через адаптер компании)
+    TOOL_MGR -->|"REST API запрос"| CRM1
+    TOOL_MGR -->|"REST API запрос"| CRM2
+    TOOL_MGR -->|"REST API запрос"| CRM3
+    TOOL_MGR -->|"REST API запрос"| CRM4
+    CRM1 -->|"JSON ответ"| TOOL_MGR
+    CRM2 -->|"JSON ответ"| TOOL_MGR
+    CRM3 -->|"JSON ответ"| TOOL_MGR
+    CRM4 -->|"JSON ответ"| TOOL_MGR
 
     %% Tool Manager -> Database
     TOOL_MGR -->|"Запись логов"| POSTGRES
@@ -110,7 +132,7 @@ graph TD
     VOIP -->|"Голосовой ответ"| USER
 
     %% Analytics logging
-    ORCH -->|"Логирование сессий"| POSTGRES
+    ORCH -->|"Логирование сессий<br/>и сообщений"| POSTGRES
 
     %% ============================================
     %% STYLING
