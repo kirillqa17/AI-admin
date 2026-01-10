@@ -6,9 +6,8 @@ API Gateway Main Application
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 import structlog
-import sys
-import os
 
 from .config import settings
 from .api.routers import message, health, telegram, whatsapp
@@ -22,7 +21,7 @@ structlog.configure(
         else structlog.dev.ConsoleRenderer()
     ],
     wrapper_class=structlog.make_filtering_bound_logger(
-        getattr(structlog.stdlib, settings.log_level, structlog.stdlib.INFO)
+        getattr(logging, settings.log_level, logging.INFO)
     ),
     context_class=dict,
     logger_factory=structlog.PrintLoggerFactory(),

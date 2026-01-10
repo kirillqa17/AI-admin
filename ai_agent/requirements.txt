@@ -7,6 +7,11 @@ google-genai>=1.0.0  # NEW SDK! Старый google-generativeai deprecated с 3
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
 
+# HTTP Server
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+httpx>=0.26.0
+
 # Async Support
 aiohttp>=3.9.0
 asyncio-mqtt>=0.16.0

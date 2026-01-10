@@ -90,20 +90,20 @@ class CRMService(BaseModel):
 class CRMTimeSlot(BaseModel):
     """Модель временного слота для записи"""
 
-    date: date = Field(..., description="Дата")
-    start_time: time = Field(..., description="Время начала")
+    slot_date: date = Field(..., description="Дата")
+    slot_time: time = Field(..., description="Время начала")
     duration_minutes: int = Field(..., description="Длительность слота")
-    
+
     employee_id: Optional[str] = Field(None, description="ID сотрудника")
     service_id: Optional[str] = Field(None, description="ID услуги")
-    
+
     is_available: bool = Field(default=True, description="Доступен ли слот")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
-                "date": "2026-01-15",
-                "start_time": "14:00",
+                "slot_date": "2026-01-15",
+                "slot_time": "14:00",
                 "duration_minutes": 60,
                 "employee_id": "emp_123",
                 "service_id": "service_456",

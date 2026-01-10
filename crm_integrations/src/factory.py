@@ -14,6 +14,9 @@ class CRMType(str, Enum):
     DIKIDI = "dikidi"
     BITRIX24 = "bitrix24"
     ONEC = "1c"
+    AMOCRM = "amocrm"
+    ALTEGIO = "altegio"
+    EASYWEEK = "easyweek"
 
 
 class CRMFactory:
@@ -112,6 +115,24 @@ def _auto_register_adapters():
     try:
         from .adapters.onec import OneCAdapter
         CRMFactory.register(CRMType.ONEC, OneCAdapter)
+    except ImportError:
+        pass
+
+    try:
+        from .adapters.amocrm import AmoCRMAdapter
+        CRMFactory.register(CRMType.AMOCRM, AmoCRMAdapter)
+    except ImportError:
+        pass
+
+    try:
+        from .adapters.altegio import AltegioAdapter
+        CRMFactory.register(CRMType.ALTEGIO, AltegioAdapter)
+    except ImportError:
+        pass
+
+    try:
+        from .adapters.easyweek import EasyWeekAdapter
+        CRMFactory.register(CRMType.EASYWEEK, EasyWeekAdapter)
     except ImportError:
         pass
 

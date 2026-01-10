@@ -187,8 +187,8 @@ CREATE TABLE messages (
     from_user_id VARCHAR(255),
     from_user_name VARCHAR(255),
     
-    -- Metadata
-    metadata JSONB DEFAULT '{}',
+    -- Extra data
+    message_metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW()
 );
 

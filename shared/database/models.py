@@ -205,8 +205,8 @@ class Message(Base):
     from_user_id = Column(String(255))
     from_user_name = Column(String(255))
     
-    # Metadata
-    metadata = Column(JSONB, default={})
+    # Extra data
+    message_metadata = Column(JSONB, default={})
     created_at = Column(DateTime, default=utcnow)
     
     # Relationships

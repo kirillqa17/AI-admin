@@ -16,5 +16,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копирование кода агента
 COPY ai_agent/src /app/src
 
-# Запуск
-CMD ["python", "-m", "src.main"]
+# Запуск HTTP сервера
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8001"]
