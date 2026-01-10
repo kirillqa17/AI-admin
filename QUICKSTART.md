@@ -91,6 +91,48 @@ docker-compose down
 docker-compose down -v
 ```
 
+## Запуск тестов
+
+### Быстрый запуск
+
+```bash
+# Все тесты
+pytest
+
+# С подробным выводом
+pytest -v
+
+# Конкретный файл
+pytest tests/unit/test_crypto.py
+
+# Тесты по имени (grep)
+pytest -k "crypto"
+
+# Остановиться на первой ошибке
+pytest -x
+```
+
+### Покрытие кода
+
+```bash
+# Запуск с измерением покрытия
+pytest --cov=shared --cov=ai_agent --cov-report=html
+
+# HTML отчет будет в htmlcov/index.html
+```
+
+### Структура тестов
+
+```
+tests/
+├── conftest.py           # Фикстуры (mock Redis, DB, переменные окружения)
+├── unit/
+│   ├── test_crypto.py    # Тесты шифрования (11 тестов)
+│   ├── test_security.py  # Тесты безопасности API
+│   └── test_crm_factory.py # Тесты CRM factory
+└── integration/          # E2E тесты (планируется)
+```
+
 ## Разработка
 
 ### Запуск без Docker (для разработки)

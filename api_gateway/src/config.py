@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     # Security
     api_key_secret: str = Field(..., description="Secret for API key generation")
     webhook_secret: str = Field(..., description="Secret for webhook verification")
+
+    # Rate Limiting
+    rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
     
     @property
     def cors_origins_list(self) -> List[str]:

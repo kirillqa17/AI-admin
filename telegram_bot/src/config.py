@@ -36,6 +36,24 @@ class Settings(BaseSettings):
         default=None,
         description="Webhook токен компании"
     )
+    webhook_path: str = Field(
+        default="/telegram/webhook",
+        description="Путь для webhook"
+    )
+    webhook_secret: str | None = Field(
+        default=None,
+        description="Secret token для верификации webhook"
+    )
+
+    # Bot mode: 'polling' or 'webhook'
+    bot_mode: str = Field(
+        default="polling",
+        description="Режим работы бота: polling или webhook"
+    )
+
+    # Web server for webhook mode
+    webhook_host: str = Field(default="0.0.0.0", description="Webhook server host")
+    webhook_port: int = Field(default=8080, description="Webhook server port")
 
     # Redis (для FSM storage)
     redis_host: str = Field(default="localhost", description="Redis host")

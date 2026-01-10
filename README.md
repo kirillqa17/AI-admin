@@ -52,13 +52,29 @@ ai-admin/
 
 ## Технологический стек
 
-- **Backend**: Python 3.10+
-- **API Framework**: FastAPI
-- **AI/LLM**: Google Gemini API
-- **Database**: PostgreSQL (данные), Redis (сессии)
-- **Message Queue**: (TBD - RabbitMQ/Redis Streams)
-- **Speech**: Google STT/TTS или Whisper/ElevenLabs
+- **Backend**: Python 3.11+
+- **API Framework**: FastAPI 0.128+
+- **AI/LLM**: Google Gemini API (google-genai SDK)
+- **Database**: PostgreSQL 15 (данные), Redis 7 (сессии, кэш)
+- **Telegram Bot**: aiogram 3.24+
+- **ORM**: SQLAlchemy 2.0+ (async)
 - **Containerization**: Docker + Docker Compose
+
+### Основные библиотеки
+
+| Библиотека | Назначение |
+|------------|------------|
+| **pydantic** | Валидация данных, типобезопасность, JSON Schema |
+| **fastapi** | Веб-фреймворк с автодокументацией (Swagger UI) |
+| **aiogram** | Telegram Bot API фреймворк (async) |
+| **google-genai** | Google Gemini SDK для генерации ответов |
+| **sqlalchemy** | ORM для PostgreSQL (async) |
+| **redis** | Клиент для Redis (сессии, история диалогов) |
+| **structlog** | Структурированное логирование (JSON) |
+| **cryptography** | Шифрование API ключей (Fernet AES-128) |
+| **pytest** | Фреймворк для тестирования |
+
+> **Подробнее о библиотеках**: см. [PROJECT_STATUS.md](PROJECT_STATUS.md#-библиотеки-и-зависимости)
 
 ## Интеграции с CRM
 
@@ -87,7 +103,7 @@ Telegram бот полностью работает и готов к тести�
 ### Для разработчиков
 - **[CLAUDE.md](CLAUDE.md)** - полное руководство для разработчиков (архитектура, multi-tenant, CRM интеграции)
 - **[QUICKSTART.md](QUICKSTART.md)** - быстрый старт для локальной разработки
-- **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - текущий статус разработки (~55% готовности)
+- **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - текущий статус разработки (~82% готовности)
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - детальное описание архитектуры
 - **[docs/architecture.mmd](docs/architecture.mmd)** - визуальная диаграмма архитектуры
 

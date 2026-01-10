@@ -5,11 +5,16 @@ Telegram Bot handlers
 import logging
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.storage.redis import RedisStorage
 
 from .config import settings
 from .gateway_client import gateway_client
+from .keyboards import (
+    create_time_slots_keyboard,
+    create_services_keyboard,
+    create_confirmation_keyboard,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +111,148 @@ async def handle_text_message(message: Message):
         )
 
 
+async def handle_slot_callback(callback: CallbackQuery):
+    """
+    Обработчик выбора слота времени
+
+    callback_data формат: slot:{date}:{time}:{employee_id}:{service_id}
+    """
+    await callback.answer()
+
+    try:
+        parts = callback.data.split(":")
+        if len(parts) < 5:
+            await callback.message.edit_text(
+                "❌ Ошибка: неверный формат данных слота"
+            )
+            return
+
+        _, date, time, employee_id, service_id = parts[:5]
+
+        # Формируем сообщение подтверждения
+        confirmation_text = (
+            f"📅 Вы выбрали:\n\n"
+            f"Дата: {date}\n"
+            f"Время: {time}\n\n"
+            f"Подтвердить запись?"
+        )
+
+        await callback.message.edit_text(
+            confirmation_text,
+            reply_markup=create_confirmation_keyboard({
+                "date": date,
+                "time": time,
+                "employee_id": employee_id,
+                "service_id": service_id
+            })
+        )
+
+        # Отправляем в Gateway для обработки
+        if settings.webhook_token:
+            await gateway_client.send_message(
+                webhook_token=settings.webhook_token,
+                telegram_user_id=callback.from_user.id,
+                telegram_username=callback.from_user.username,
+                telegram_first_name=callback.from_user.first_name,
+                telegram_last_name=callback.from_user.last_name,
+                text=f"SLOT_SELECTED:{date}:{time}:{employee_id}:{service_id}",
+                message_id=callback.message.message_id
+            )
+
+    except Exception as e:
+        logger.error(f"Ошибка обработки слота: {e}", exc_info=True)
+        await callback.message.edit_text(
+            "❌ Произошла ошибка. Попробуйте еще раз."
+        )
+
+
+async def handle_service_callback(callback: CallbackQuery):
+    """
+    Обработчик выбора услуги
+
+    callback_data формат: service:{service_id}
+    """
+    await callback.answer()
+
+    try:
+        parts = callback.data.split(":")
+        if len(parts) < 2:
+            await callback.message.edit_text(
+                "❌ Ошибка: неверный формат данных"
+            )
+            return
+
+        service_id = parts[1]
+
+        await callback.message.edit_text(
+            "⏳ Загружаю доступное время..."
+        )
+
+        # Отправляем в Gateway
+        if settings.webhook_token:
+            response = await gateway_client.send_message(
+                webhook_token=settings.webhook_token,
+                telegram_user_id=callback.from_user.id,
+                telegram_username=callback.from_user.username,
+                telegram_first_name=callback.from_user.first_name,
+                telegram_last_name=callback.from_user.last_name,
+                text=f"SERVICE_SELECTED:{service_id}",
+                message_id=callback.message.message_id
+            )
+
+            if response and "response" in response:
+                await callback.message.edit_text(response["response"])
+
+    except Exception as e:
+        logger.error(f"Ошибка обработки услуги: {e}", exc_info=True)
+        await callback.message.edit_text(
+            "❌ Произошла ошибка. Попробуйте еще раз."
+        )
+
+
+async def handle_confirm_callback(callback: CallbackQuery):
+    """Обработчик подтверждения записи"""
+    await callback.answer("✅ Запись подтверждена!")
+
+    try:
+        # Отправляем подтверждение в Gateway
+        if settings.webhook_token:
+            response = await gateway_client.send_message(
+                webhook_token=settings.webhook_token,
+                telegram_user_id=callback.from_user.id,
+                telegram_username=callback.from_user.username,
+                telegram_first_name=callback.from_user.first_name,
+                telegram_last_name=callback.from_user.last_name,
+                text="CONFIRM_BOOKING",
+                message_id=callback.message.message_id
+            )
+
+            if response and "response" in response:
+                await callback.message.edit_text(response["response"])
+            else:
+                await callback.message.edit_text(
+                    "✅ Ваша запись подтверждена!\n\n"
+                    "Мы отправим вам напоминание перед визитом."
+                )
+
+    except Exception as e:
+        logger.error(f"Ошибка подтверждения: {e}", exc_info=True)
+        await callback.message.edit_text(
+            "❌ Произошла ошибка при подтверждении. "
+            "Пожалуйста, свяжитесь с нами напрямую."
+        )
+
+
+async def handle_cancel_callback(callback: CallbackQuery):
+    """Обработчик отмены"""
+    await callback.answer("Отменено")
+
+    await callback.message.edit_text(
+        "❌ Запись отменена.\n\n"
+        "Напишите мне, если хотите записаться на другое время."
+    )
+
+
 def setup_handlers(dp: Dispatcher):
     """Регистрирует все handlers бота"""
 
@@ -115,6 +262,12 @@ def setup_handlers(dp: Dispatcher):
 
     # Текстовые сообщения
     dp.message.register(handle_text_message, F.text)
+
+    # Callback queries (inline кнопки)
+    dp.callback_query.register(handle_slot_callback, F.data.startswith("slot:"))
+    dp.callback_query.register(handle_service_callback, F.data.startswith("service:"))
+    dp.callback_query.register(handle_confirm_callback, F.data == "confirm_booking")
+    dp.callback_query.register(handle_cancel_callback, F.data == "cancel_booking")
 
 
 async def on_startup(bot: Bot):

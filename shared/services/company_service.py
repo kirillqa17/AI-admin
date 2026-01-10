@@ -14,6 +14,7 @@ from ..database.models import (
     CompanyAgentSettings,
     CompanyChannel,
 )
+from ..utils.crypto import get_crypto_service, CryptoService
 
 logger = structlog.get_logger(__name__)
 
@@ -111,7 +112,43 @@ class CompanyService:
 
         return context
     
-    async def decrypt_api_key(self, encrypted_key: str) -> str:
-        """Расшифровать API ключ CRM (TODO: реализовать реальное шифрование)"""
-        # TODO: Implement real encryption
-        return encrypted_key
+    def decrypt_api_key(self, encrypted_key: str) -> str:
+        """
+        Расшифровать API ключ CRM
+
+        Args:
+            encrypted_key: Зашифрованный API ключ
+
+        Returns:
+            Расшифрованный API ключ
+        """
+        try:
+            crypto = get_crypto_service()
+
+            # Если ключ не зашифрован (для обратной совместимости), вернуть как есть
+            if not crypto.is_encrypted(encrypted_key):
+                logger.warning(
+                    "api_key_not_encrypted",
+                    hint="Consider encrypting API keys in database"
+                )
+                return encrypted_key
+
+            return crypto.decrypt(encrypted_key)
+        except Exception as e:
+            logger.error("api_key_decryption_failed", error=str(e))
+            # В случае ошибки возвращаем как есть (для обратной совместимости)
+            return encrypted_key
+
+    @staticmethod
+    def encrypt_api_key(api_key: str) -> str:
+        """
+        Зашифровать API ключ для хранения в БД
+
+        Args:
+            api_key: Открытый API ключ
+
+        Returns:
+            Зашифрованный API ключ
+        """
+        crypto = get_crypto_service()
+        return crypto.encrypt(api_key)

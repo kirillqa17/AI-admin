@@ -89,8 +89,8 @@ class Orchestrator:
                 # Получаем контекст компании для промптов
                 company_context = await company_service.get_company_context(message.company_id)
 
-                # Расшифровываем API ключ (TODO: реализовать decrypt_api_key)
-                api_key = crm_settings.api_key_encrypted  # Пока без расшифровки
+                # Расшифровываем API ключ
+                api_key = company_service.decrypt_api_key(crm_settings.api_key_encrypted)
 
                 # 3. MULTI-TENANT: Создаем CRM адаптер для ЭТОЙ компании
                 crm_adapter = CRMFactory.create(
@@ -113,7 +113,14 @@ class Orchestrator:
                 # Формируем контекст диалога
                 conversation_history = await self._build_conversation_history(session)
 
-                # Добавляем текущее сообщение
+                # Добавляем текущее сообщение пользователя в историю Redis
+                await self.storage.add_message_to_history(
+                    session_id=session.id,
+                    role="user",
+                    content=message.text
+                )
+
+                # Добавляем текущее сообщение в контекст для Gemini
                 conversation_history.append({
                     "role": "user",
                     "parts": [{"text": message.text}]
@@ -137,6 +144,14 @@ class Orchestrator:
 
                 # Обрабатываем ответ (передаем tool_manager в метод)
                 result = await self._process_gemini_response(response, session, tool_manager)
+
+                # Сохраняем ответ модели в историю (если есть текст)
+                if result.get("text"):
+                    await self.storage.add_message_to_history(
+                        session_id=session.id,
+                        role="model",
+                        content=result["text"]
+                    )
 
                 # Обновляем состояние сессии на основе контекста
                 await self._update_session_state(session)
@@ -189,13 +204,14 @@ class Orchestrator:
     async def _build_conversation_history(self, session: Session) -> List[Dict]:
         """
         Построить историю диалога для контекста
-        
-        TODO: Загружать реальные сообщения из БД
-        Пока возвращаем пустую историю
+
+        Загружает историю из Redis (последние 20 сообщений)
         """
-        # В будущем здесь будет загрузка из PostgreSQL
-        # Ограничиваем количество сообщений для контекста
-        return []
+        history = await self.storage.get_conversation_history(
+            session_id=session.id,
+            max_messages=20
+        )
+        return history
     
     async def _process_gemini_response(
         self,

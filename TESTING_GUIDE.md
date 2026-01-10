@@ -304,6 +304,114 @@ docker-compose down
 docker-compose down -v
 ```
 
+## Unit тесты
+
+### Структура тестов
+
+```
+tests/
+├── conftest.py              # Pytest фикстуры (общие для всех тестов)
+├── unit/
+│   ├── test_crypto.py       # Тесты шифрования (11 тестов)
+│   ├── test_security.py     # Тесты безопасности API
+│   └── test_crm_factory.py  # Тесты CRM factory
+└── integration/             # E2E тесты (планируется)
+```
+
+### Конфигурация pytest
+
+Файл `pytest.ini` в корне проекта:
+```ini
+[pytest]
+testpaths = tests
+asyncio_mode = auto          # Автоматический async режим
+python_files = test_*.py     # Какие файлы считать тестами
+addopts = -v --tb=short      # Подробный вывод, короткий traceback
+```
+
+### Фикстуры (conftest.py)
+
+Фикстуры — это "заготовки" для тестов, которые pytest автоматически подставляет:
+
+```python
+# tests/conftest.py
+
+# Тестовые переменные окружения (НЕ production!)
+os.environ.setdefault("ENCRYPTION_MASTER_KEY", "test-encryption-key")
+os.environ.setdefault("API_KEY_SECRET", "test-api-key-secret")
+
+@pytest.fixture
+def mock_redis(mocker):
+    """Мок Redis для тестов без реального Redis"""
+    mock = mocker.MagicMock()
+    mock.get = mocker.AsyncMock(return_value=None)
+    mock.set = mocker.AsyncMock(return_value=True)
+    return mock
+```
+
+### Запуск тестов
+
+```bash
+# Все тесты
+pytest
+
+# С подробным выводом
+pytest -v
+
+# Конкретный файл
+pytest tests/unit/test_crypto.py
+
+# Тесты по имени
+pytest -k "crypto"
+
+# С покрытием кода
+pytest --cov=shared --cov=ai_agent --cov-report=html
+
+# Остановиться на первой ошибке
+pytest -x
+```
+
+### Пример теста
+
+```python
+# tests/unit/test_crypto.py
+
+class TestCryptoService:
+    @pytest.fixture
+    def crypto(self):
+        """Создаем CryptoService с тестовым ключом"""
+        return CryptoService(master_key="test-master-key")
+
+    def test_encrypt_decrypt_roundtrip(self, crypto):
+        """Тест: шифрование и расшифровка работают"""
+        original = "my_secret_api_key_123"
+        encrypted = crypto.encrypt(original)
+        decrypted = crypto.decrypt(encrypted)
+
+        assert decrypted == original  # Расшифровка верная
+        assert encrypted != original  # Зашифровано (не plaintext)
+
+    def test_wrong_key_fails_decryption(self):
+        """Тест: неверный ключ не расшифровывает"""
+        crypto1 = CryptoService(master_key="key-one")
+        crypto2 = CryptoService(master_key="key-two")
+
+        encrypted = crypto1.encrypt("secret")
+
+        with pytest.raises(Exception):  # Должна быть ошибка!
+            crypto2.decrypt(encrypted)
+```
+
+### Что уже покрыто тестами
+
+| Модуль | Тестов | Покрытие |
+|--------|--------|----------|
+| `shared/utils/crypto.py` | 11 | ~90% |
+| `api_gateway/src/core/security.py` | 8 | ~80% |
+| `crm_integrations/src/factory.py` | 6 | ~70% |
+
+---
+
 ## Следующие шаги
 
 После успешного тестирования вы можете:

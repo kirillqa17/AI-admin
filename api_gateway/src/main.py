@@ -2,6 +2,11 @@
 API Gateway Main Application
 
 Центральная точка входа для всех каналов коммуникации
+
+Security:
+- Rate limiting (Redis-based sliding window)
+- API key authentication for internal endpoints
+- Webhook signature verification for external integrations
 """
 
 from fastapi import FastAPI
@@ -11,6 +16,7 @@ import structlog
 
 from .config import settings
 from .api.routers import message, health, telegram, whatsapp
+from .middleware.rate_limit import RateLimitMiddleware
 
 # Настройка логирования
 structlog.configure(
@@ -35,6 +41,15 @@ app = FastAPI(
     title=settings.api_title,
     version=settings.api_version,
     description="API Gateway для AI-Admin системы"
+)
+
+# Rate Limiting Middleware (должен быть первым)
+app.add_middleware(
+    RateLimitMiddleware,
+    redis_url=settings.redis_url,
+    default_limit=100,  # 100 requests per minute
+    window_seconds=60,
+    enabled=settings.rate_limit_enabled
 )
 
 # CORS
