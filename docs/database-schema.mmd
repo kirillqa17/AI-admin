@@ -1,0 +1,141 @@
+---
+title: AI-Admin Database Schema (Multi-tenant)
+---
+
+erDiagram
+    %% ===============================================
+    %% КОМПАНИИ (TENANTS)
+    %% ===============================================
+
+    companies {
+        UUID id PK "Primary Key"
+        VARCHAR_255 name "Название компании"
+        VARCHAR_255 email UK "Email (уникальный)"
+        VARCHAR_50 phone "Телефон"
+        VARCHAR_50 subscription_plan "free | starter | pro | enterprise"
+        VARCHAR_50 subscription_status "active | inactive | suspended"
+        DATETIME subscription_expires_at "Дата окончания подписки"
+        BOOLEAN is_active "Активна ли компания"
+        VARCHAR_255 billing_email "Email для биллинга"
+        DATETIME created_at "Дата создания"
+        DATETIME updated_at "Дата обновления"
+    }
+
+    %% ===============================================
+    %% НАСТРОЙКИ CRM КОМПАНИИ (1:1)
+    %% ===============================================
+
+    company_crm_settings {
+        UUID id PK "Primary Key"
+        UUID company_id FK, UK "FK -> companies (уникальный)"
+        VARCHAR_50 crm_type "yclients | dikidi | bitrix24 | 1c | amocrm | altegio | easyweek"
+        TEXT api_key_encrypted "API ключ (ЗАШИФРОВАН Fernet)"
+        VARCHAR_500 base_url "Базовый URL API CRM"
+        VARCHAR_255 company_id_in_crm "ID компании в CRM"
+        JSONB additional_settings "Дополнительные настройки CRM"
+        BOOLEAN is_active "Активна ли интеграция"
+        DATETIME last_sync_at "Последняя синхронизация"
+        VARCHAR_50 last_sync_status "success | error | pending"
+        TEXT last_sync_error "Текст ошибки синхронизации"
+        DATETIME created_at "Дата создания"
+        DATETIME updated_at "Дата обновления"
+    }
+
+    %% ===============================================
+    %% НАСТРОЙКИ AI АГЕНТА КОМПАНИИ (1:1)
+    %% ===============================================
+
+    company_agent_settings {
+        UUID id PK "Primary Key"
+        UUID company_id FK, UK "FK -> companies (уникальный)"
+        TEXT company_description "Описание компании для AI"
+        VARCHAR_100 business_type "beauty | fitness | medical | spa | other"
+        TEXT target_audience "Целевая аудитория"
+        VARCHAR_500 working_hours "Часы работы"
+        TEXT address "Адрес компании"
+        VARCHAR_50 phone_display "Телефон для отображения"
+        JSONB services_catalog "Каталог услуг"
+        JSONB products_catalog "Каталог товаров"
+        TEXT business_highlights "Особенности бизнеса"
+        TEXT greeting_message "Приветственное сообщение"
+        TEXT farewell_message "Прощальное сообщение"
+        TEXT custom_instructions "Кастомные инструкции для AI"
+        DECIMAL_3_2 temperature "Температура LLM (0.0-1.0)"
+        INTEGER max_tokens "Максимум токенов ответа"
+        VARCHAR_100 model_name "gemini-2.0-flash-exp | gemini-pro"
+        JSONB custom_prompts "Кастомные промпты"
+        JSONB features "auto_booking | consultation | reminders"
+        DATETIME created_at "Дата создания"
+        DATETIME updated_at "Дата обновления"
+    }
+
+    %% ===============================================
+    %% КАНАЛЫ КОММУНИКАЦИИ КОМПАНИИ (1:N)
+    %% ===============================================
+
+    company_channels {
+        UUID id PK "Primary Key"
+        UUID company_id FK "FK -> companies"
+        VARCHAR_50 channel_type "telegram | whatsapp | voice | web"
+        VARCHAR_255 channel_name "Название канала"
+        BOOLEAN is_active "Активен ли канал"
+        JSONB config "Конфигурация канала"
+        VARCHAR_255 webhook_token UK "Уникальный токен для webhook"
+        VARCHAR_500 webhook_url "URL webhook"
+        INTEGER messages_received "Счетчик входящих сообщений"
+        INTEGER messages_sent "Счетчик исходящих сообщений"
+        DATETIME last_activity_at "Последняя активность"
+        DATETIME created_at "Дата создания"
+        DATETIME updated_at "Дата обновления"
+    }
+
+    %% ===============================================
+    %% СЕССИИ ДИАЛОГОВ (1:N)
+    %% ===============================================
+
+    sessions {
+        UUID id PK "Primary Key"
+        UUID company_id FK "FK -> companies"
+        VARCHAR_255 user_id "ID пользователя в канале"
+        VARCHAR_50 channel "telegram | whatsapp | voice | web"
+        VARCHAR_50 state "INITIATED | GREETING | COLLECTING_INFO | CONSULTING | BOOKING | CONFIRMING | COMPLETED | FAILED"
+        JSONB context "Контекст диалога (имя, телефон, услуга, слот)"
+        VARCHAR_255 crm_client_id "ID клиента в CRM компании"
+        VARCHAR_255 crm_appointment_id "ID записи в CRM компании"
+        DATETIME created_at "Дата создания"
+        DATETIME updated_at "Дата обновления"
+        DATETIME last_activity_at "Последняя активность"
+        DATETIME expires_at "Дата истечения сессии"
+    }
+
+    %% ===============================================
+    %% СООБЩЕНИЯ (1:N)
+    %% ===============================================
+
+    messages {
+        UUID id PK "Primary Key"
+        UUID session_id FK "FK -> sessions"
+        UUID company_id FK "FK -> companies"
+        VARCHAR_50 channel "telegram | whatsapp | voice | web"
+        VARCHAR_50 message_type "text | audio | image | video | document | location | contact"
+        TEXT text "Текст сообщения"
+        VARCHAR_500 audio_url "URL аудио файла"
+        VARCHAR_500 image_url "URL изображения"
+        VARCHAR_500 file_url "URL файла"
+        BOOLEAN is_from_bot "Сообщение от бота?"
+        VARCHAR_255 from_user_id "ID отправителя"
+        VARCHAR_255 from_user_name "Имя отправителя"
+        JSONB message_metadata "Дополнительные данные"
+        DATETIME created_at "Дата создания"
+    }
+
+    %% ===============================================
+    %% СВЯЗИ (RELATIONSHIPS)
+    %% ===============================================
+
+    companies ||--o| company_crm_settings : "has CRM settings"
+    companies ||--o| company_agent_settings : "has AI agent settings"
+    companies ||--o{ company_channels : "has channels"
+    companies ||--o{ sessions : "has sessions"
+    companies ||--o{ messages : "has messages"
+    sessions ||--o{ messages : "contains messages"

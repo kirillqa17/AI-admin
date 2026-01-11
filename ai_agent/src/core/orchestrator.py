@@ -2,6 +2,12 @@
 Orchestrator - главный контроллер диалога
 
 Управляет всей логикой взаимодействия с клиентом
+
+Ключевые функции:
+- Управление сессиями (Redis для оперативных данных, PostgreSQL для персистентности)
+- Взаимодействие с Gemini LLM
+- Выполнение function calls (CRM операции)
+- Сохранение истории сообщений в PostgreSQL для аналитики
 """
 
 import uuid
@@ -13,6 +19,8 @@ from shared.models.message import Message, MessageType, Channel
 from shared.models.session import Session, SessionState
 from shared.database.connection import Database
 from shared.services.company_service import CompanyService
+from shared.services.message_repository import MessageRepository
+from shared.services.session_repository import SessionRepository
 from crm_integrations.src.factory import CRMFactory
 
 from ..services.gemini_service import GeminiService
@@ -29,12 +37,17 @@ class Orchestrator:
     Главный оркестратор диалога
 
     Отвечает за:
-    - Управление сессиями
-    - Взаимодействие с Gemini
-    - Выполнение function calls
-    - Переходы между состояниями
-    - Сохранение контекста
+    - Управление сессиями (Redis + PostgreSQL)
+    - Взаимодействие с Gemini LLM
+    - Выполнение function calls через CRM адаптеры
+    - Переходы между состояниями диалога
+    - Сохранение контекста в Redis
+    - Персистентное хранение сообщений в PostgreSQL для аналитики
     - Multi-tenant: загрузка настроек компании из БД
+
+    Архитектура хранения:
+    - Redis: оперативные данные сессий, быстрый доступ, TTL
+    - PostgreSQL: персистентное хранение для аналитики и аудита
     """
 
     def __init__(self, database_url: Optional[str] = None):
@@ -80,6 +93,8 @@ class Orchestrator:
             # 2. MULTI-TENANT: Загружаем настройки компании из БД
             async with self.db.session() as db_session:
                 company_service = CompanyService(db_session)
+                message_repo = MessageRepository(db_session)
+                session_repo = SessionRepository(db_session)
 
                 # Получаем CRM настройки
                 crm_settings = await company_service.get_crm_settings(message.company_id)
@@ -109,6 +124,26 @@ class Orchestrator:
                 # Обновляем сессию
                 session.last_activity_at = datetime.now(timezone.utc)
                 session.message_ids.append(message.id)
+
+                # 6. POSTGRES: Сохраняем сессию и сообщение пользователя
+                await session_repo.upsert_session(
+                    session_id=session.id,
+                    company_id=message.company_id,
+                    user_id=session.user_id,
+                    channel=session.channel,
+                    state=session.state.value if hasattr(session.state, 'value') else session.state,
+                    context=session.context,
+                )
+
+                await message_repo.save_user_message(
+                    session_id=session.id,
+                    company_id=message.company_id,
+                    channel=message.channel.value if hasattr(message.channel, 'value') else message.channel,
+                    text=message.text,
+                    from_user_id=message.from_user_id,
+                    from_user_name=message.from_user_name,
+                    metadata=message.metadata,
+                )
 
                 # Формируем контекст диалога
                 conversation_history = await self._build_conversation_history(session)
@@ -153,18 +188,38 @@ class Orchestrator:
                         content=result["text"]
                     )
 
+                    # 7. POSTGRES: Сохраняем ответ бота
+                    await message_repo.save_bot_message(
+                        session_id=session.id,
+                        company_id=message.company_id,
+                        channel=message.channel.value if hasattr(message.channel, 'value') else message.channel,
+                        text=result["text"],
+                        metadata={
+                            "function_called": result.get("function_called", False),
+                            "function_name": result.get("function_name"),
+                        } if result.get("function_called") else None,
+                    )
+
                 # Обновляем состояние сессии на основе контекста
                 await self._update_session_state(session)
 
-                # Сохраняем сессию
+                # 8. POSTGRES: Обновляем состояние сессии
+                await session_repo.update_session_state(
+                    session_id=session.id,
+                    state=session.state.value if hasattr(session.state, 'value') else session.state,
+                    context=session.context,
+                )
+
+                # Сохраняем сессию в Redis
                 await self.storage.save_session(session)
 
                 logger.info(
                     "message_handled_successfully",
                     session_id=session.id,
                     company_id=message.company_id,
-                    new_state=session.state,
-                    has_function_call=result.get("function_called", False)
+                    new_state=session.state.value if hasattr(session.state, 'value') else session.state,
+                    has_function_call=result.get("function_called", False),
+                    persisted_to_postgres=True
                 )
 
                 return result

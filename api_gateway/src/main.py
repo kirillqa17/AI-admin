@@ -15,7 +15,7 @@ import logging
 import structlog
 
 from .config import settings
-from .api.routers import message, health, telegram, whatsapp
+from .api.routers import message, health, telegram, whatsapp, history
 from .middleware.rate_limit import RateLimitMiddleware
 
 # Настройка логирования
@@ -66,6 +66,7 @@ app.include_router(health.router, prefix="/health", tags=["Health"])
 app.include_router(message.router, prefix="/api/v1/messages", tags=["Messages"])
 app.include_router(telegram.router, prefix="/api/v1/telegram", tags=["Telegram"])
 app.include_router(whatsapp.router, prefix="/api/v1/whatsapp", tags=["WhatsApp"])
+app.include_router(history.router, prefix="/api/v1/history", tags=["History & Analytics"])
 
 
 @app.on_event("startup")
